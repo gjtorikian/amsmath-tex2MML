@@ -4,32 +4,29 @@ branches:
   - master
 clone_depth: 10
 cache:
-  - win_flex_bison-2.4.5.zip
-matrix:
-  fast_finish: true
+  - C:\ProgramData\chocolatey\bin -> appveyor.yml
+  - C:\ProgramData\chocolatey\lib -> appveyor.yml
+image:
+- Visual Studio 2017
+build:
+  parallel: true
+platform:
+- x64
+- x86
 environment:
-  WINFLEXBISON_ARCHIVE: win_flex_bison-2.4.5.zip
   PYTHON: "C:\\Python34-x64"
   PYTHON_VERSION: "3.4.3"
   PYTHON_ARCH: "64"
-  matrix:
-    - GENERATOR: "Visual Studio 13"
-      ARCH: 32
-    - GENERATOR: "Visual Studio 13"
-      ARCH: 64
 install:
-  # Install flex/bison
-  - if not exist "%WINFLEXBISON_ARCHIVE%" appveyor DownloadFile "http://downloads.sourceforge.net/project/winflexbison/%WINFLEXBISON_ARCHIVE%"
-  - 7z x -y -owinflexbison\ "%WINFLEXBISON_ARCHIVE%" > nul
-  - set Path=%CD%\winflexbison;%Path%
-  - win_flex --version
-  - win_bison --version
+- ps: |
+    if (-not (Test-Path "C:\ProgramData\chocolatey\lib\winflexbison3")) {
+      & choco install winflexbison3
+      if ($LastExitCode -ne 0) { $host.SetShouldExit($LastExitCode) }
+    }
+    if ($env:PLATFORM -eq "x64") { $env:CMAKE_ARCH = "x64" }
+    $env:CMAKE_GENERATOR = "Visual Studio 15 2017"
 build_script:
-- ps: |
-    mkdir build
-    cmake . -Bbuild -G "Visual Studio 12 2013"
-    msbuild /p:Configuration=Release build/mtex2MML.sln
+- cmake -G "%CMAKE_GENERATOR%" -A "%CMAKE_ARCH%" .
+- msbuild /p:Configuration=Release mtex2MML.sln
 test_script:
-- ps: |
-    cd build
-    ctest -V
+- ctest -V .
